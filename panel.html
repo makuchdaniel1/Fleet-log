@@ -45,7 +45,7 @@
       <!-- Akcje / Przyciski -->
       <div class="flex flex-wrap items-center gap-2 no-print w-full md:w-auto">
         <button type="button" onclick="openAddVehicleModal()" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-3.5 py-2.5 rounded-xl shadow transition-all active:scale-95 flex items-center gap-1.5 flex-1 md:flex-none justify-center">
-          <span>🚘</span> Dodaj Pojazd
+          <span>🚘</span> Flota / Dodaj Pojazd
         </button>
 
         <button type="button" onclick="generatePDF()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-3.5 py-2.5 rounded-xl shadow transition-all active:scale-95 flex items-center gap-1.5 flex-1 md:flex-none justify-center">
@@ -93,7 +93,7 @@
       <div class="p-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <h2 class="font-bold text-slate-800 text-lg">📑 Zestawienie Wpisów i Tankowań</h2>
         
-        <!-- Filtr Pojazdów (Dynamiczny) -->
+        <!-- Filtr Pojazdów -->
         <select id="filterVehicle" onchange="renderTable()" class="text-sm p-2 border rounded-xl bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:outline-none no-print">
           <!-- Wypełniane przez JS -->
         </select>
@@ -124,33 +124,41 @@
 
   </div>
 
-  <!-- MODAL: Dodawanie Nowego Pojazdu -->
+  <!-- MODAL: Zarządzanie Flotą i Dodawanie Pojazdu -->
   <div id="addVehicleModal" class="fixed inset-0 bg-black/70 hidden z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
-    <div class="bg-white rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl relative">
+    <div class="bg-white rounded-2xl p-6 max-w-md w-full space-y-5 shadow-2xl relative max-h-[90vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b pb-3">
-        <h3 class="text-lg font-bold text-slate-900">🚘 Dodaj nowy pojazd do floty</h3>
+        <h3 class="text-lg font-bold text-slate-900">🚘 Zarządzanie Flotą Pojazdów</h3>
         <button type="button" onclick="closeAddVehicleModal()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
       </div>
 
-      <form id="vehicleForm" onsubmit="saveNewVehicle(event)" class="space-y-3">
+      <!-- Formularz Nowego Pojazdu -->
+      <form id="vehicleForm" onsubmit="saveNewVehicle(event)" class="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+        <h4 class="font-bold text-xs uppercase text-slate-500 tracking-wider">Dodaj nowy pojazd</h4>
         <div>
-          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Nazwa / Model pojazdu</label>
-          <input type="text" id="newVehName" required placeholder="np. Mercedes Sprinter" class="w-full p-3 border rounded-xl bg-slate-50 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Nazwa / Model</label>
+          <input type="text" id="newVehName" required placeholder="np. Mercedes Sprinter" class="w-full p-2.5 border rounded-lg bg-white text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none">
         </div>
         <div>
           <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Numer rejestracyjny</label>
-          <input type="text" id="newVehReg" required placeholder="np. LU 12345" class="w-full p-3 border rounded-xl bg-slate-50 font-bold text-slate-800 uppercase focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          <input type="text" id="newVehReg" required placeholder="np. LU 12345" class="w-full p-2.5 border rounded-lg bg-white text-sm font-bold uppercase focus:ring-2 focus:ring-blue-500 focus:outline-none">
         </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Początkowy stan licznika (km)</label>
-          <input type="number" id="newVehMileage" placeholder="np. 185000" class="w-full p-3 border rounded-xl bg-slate-50 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none">
-        </div>
-
-        <div class="flex gap-2 pt-2">
-          <button type="button" onclick="closeAddVehicleModal()" class="w-1/2 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-all">Anuluj</button>
-          <button type="submit" class="w-1/2 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow transition-all">Zapisz Pojazd</button>
-        </div>
+        <button type="submit" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow text-sm transition-all">
+          ➕ Dodaj do floty
+        </button>
       </form>
+
+      <!-- Lista Obecnych Pojazdów z Opcją Usuwania -->
+      <div class="space-y-2">
+        <h4 class="font-bold text-xs uppercase text-slate-500 tracking-wider">Aktualne pojazdy we flocie</h4>
+        <div id="modalVehicleList" class="space-y-2 max-h-48 overflow-y-auto">
+          <!-- Generowane przez JS -->
+        </div>
+      </div>
+
+      <button type="button" onclick="closeAddVehicleModal()" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-sm transition-all">
+        Zamknij
+      </button>
     </div>
   </div>
 
@@ -183,8 +191,8 @@
     let fleetVehicles = [];
 
     const defaultVehicles = [
-      { registration: 'LLE 44468', name: 'Audi A4 B6', initialMileage: 0 },
-      { registration: 'LUB 6894R', name: 'Opel', initialMileage: 0 }
+      { registration: 'LLE 44468', name: 'Audi A4 B6' },
+      { registration: 'LUB 6894R', name: 'Opel' }
     ];
 
     function initVehicles() {
@@ -196,6 +204,7 @@
         fleetVehicles = JSON.parse(stored);
       }
       renderVehicleFilter();
+      renderModalVehicleList();
     }
 
     function renderVehicleFilter() {
@@ -204,7 +213,45 @@
         fleetVehicles.map(v => `<option value="${v.registration}">${v.name} (${v.registration})</option>`).join('');
     }
 
+    function renderModalVehicleList() {
+      const container = document.getElementById('modalVehicleList');
+      if (!container) return;
+
+      if (fleetVehicles.length === 0) {
+        container.innerHTML = '<p class="text-xs text-slate-400 py-2">Brak pojazdów we flocie.</p>';
+        return;
+      }
+
+      container.innerHTML = fleetVehicles.map((v, index) => `
+        <div class="flex items-center justify-between bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-xs">
+          <div>
+            <span class="font-bold text-slate-800">${v.name}</span>
+            <span class="ml-1 bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded font-mono font-bold">${v.registration}</span>
+          </div>
+          <button type="button" onclick="deleteVehicle('${v.registration}')" class="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded font-bold transition-colors">
+            🗑️ Usuń
+          </button>
+        </div>
+      `).join('');
+    }
+
+    function deleteVehicle(registration) {
+      if (fleetVehicles.length <= 1) {
+        alert("Flota musi posiadać co najmniej jeden pojazd.");
+        return;
+      }
+
+      if (!confirm(`Czy na pewno chcesz usunąć pojazd z rejestracją ${registration} z floty?`)) return;
+
+      fleetVehicles = fleetVehicles.filter(v => v.registration !== registration);
+      localStorage.setItem('fleet_vehicles', JSON.stringify(fleetVehicles));
+
+      initVehicles();
+      processData();
+    }
+
     function openAddVehicleModal() {
+      renderModalVehicleList();
       document.getElementById('addVehicleModal').classList.remove('hidden');
     }
 
@@ -217,17 +264,20 @@
       e.preventDefault();
       const name = document.getElementById('newVehName').value.trim();
       const registration = document.getElementById('newVehReg').value.trim().toUpperCase();
-      const initialMileage = parseInt(document.getElementById('newVehMileage').value) || 0;
 
       if (!name || !registration) return;
 
-      fleetVehicles.push({ name, registration, initialMileage });
+      if (fleetVehicles.some(v => v.registration === registration)) {
+        alert("Pojazd o takiej rejestracji już istnieje we flocie!");
+        return;
+      }
+
+      fleetVehicles.push({ name, registration });
       localStorage.setItem('fleet_vehicles', JSON.stringify(fleetVehicles));
 
-      closeAddVehicleModal();
+      document.getElementById('vehicleForm').reset();
       initVehicles();
       processData();
-      alert(`Pojazd ${name} (${registration}) został pomyślnie dodany do floty!`);
     }
 
     function loadFromLocalStorage() {
@@ -311,23 +361,31 @@
         }
       });
 
-      document.getElementById('kpiTotalPLN').innerText = totalPLN.toFixed(2) + ' PLN';
-      document.getElementById('kpiTotalEUR').innerText = totalEUR.toFixed(2) + ' EUR';
+      const elPLN = document.getElementById('kpiTotalPLN');
+      const elEUR = document.getElementById('kpiTotalEUR');
+      if (elPLN) elPLN.innerText = totalPLN.toFixed(2) + ' PLN';
+      if (elEUR) elEUR.innerText = totalEUR.toFixed(2) + ' EUR';
     }
 
     function renderVehicleCards() {
       const container = document.getElementById('kpiContainer');
       
-      // Zachowujemy 2 pierwsze karty stałe (PLN i EUR)
+      let totalPLN = 0;
+      let totalEUR = 0;
+      globalExpenses.forEach(e => {
+        if (e.currency === 'EUR') totalEUR += e.amount;
+        else totalPLN += e.amount;
+      });
+
       const staticCards = `
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
           <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Koszty Całkowite (PLN)</p>
-          <p id="kpiTotalPLN" class="text-2xl font-black text-slate-900 mt-1">${document.getElementById('kpiTotalPLN') ? document.getElementById('kpiTotalPLN').innerText : '0.00 PLN'}</p>
+          <p id="kpiTotalPLN" class="text-2xl font-black text-slate-900 mt-1">${totalPLN.toFixed(2)} PLN</p>
           <span class="text-xs text-slate-500 mt-1 block">paliwo + opłaty + serwis</span>
         </div>
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
           <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Koszty Całkowite (EUR)</p>
-          <p id="kpiTotalEUR" class="text-2xl font-black text-blue-600 mt-1">${document.getElementById('kpiTotalEUR') ? document.getElementById('kpiTotalEUR').innerText : '0.00 EUR'}</p>
+          <p id="kpiTotalEUR" class="text-2xl font-black text-blue-600 mt-1">${totalEUR.toFixed(2)} EUR</p>
           <span class="text-xs text-slate-500 mt-1 block">trasy zagraniczne</span>
         </div>
       `;
@@ -347,7 +405,6 @@
       }).join('');
 
       container.innerHTML = staticCards + vehicleCards;
-      calculateTotals();
     }
 
     function getFuelStats(regNumber) {
