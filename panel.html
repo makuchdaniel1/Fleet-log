@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FleetLog AI - Panel Przewoźnika</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class' }
+  </script>
   <style>
     @media print {
       nav, button, label, select, input, #photoModal, #addVehicleModal, .no-print {
@@ -31,24 +34,30 @@
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
-<body class="bg-slate-100 text-slate-800 min-h-screen p-4 md:p-8">
+<body class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen p-4 md:p-8 transition-colors duration-200">
 
   <div class="max-w-6xl mx-auto space-y-6">
     
     <!-- Nagłówek Panelu -->
-    <div class="bg-white rounded-2xl shadow-sm p-6 border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6 border border-slate-200 dark:border-slate-700 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
       <div>
-        <h1 class="text-2xl font-bold text-slate-900">📊 Panel Przewoźnika — Analiza Floty</h1>
-        <p class="text-sm text-slate-500">Zestawienie kosztów, spalania oraz zarządzanie kopią zapasową bazy</p>
+        <h1 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span>📊</span> Panel Przewoźnika — Analiza Floty
+        </h1>
+        <p class="text-sm text-slate-500 dark:text-slate-400">Podsumowanie kosztów, koszty PLN/km oraz alerty serwisowe</p>
       </div>
 
       <!-- Akcje / Przyciski -->
       <div class="flex flex-wrap items-center gap-2 no-print w-full md:w-auto">
-        <button type="button" onclick="openAddVehicleModal()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-2.5 rounded-xl shadow transition-all active:scale-95 flex items-center gap-1.5 justify-center">
-          <span>🚘</span> Flota
+        <button type="button" onclick="toggleDarkMode()" class="p-2.5 bg-slate-100 dark:bg-slate-700 rounded-xl text-lg hover:scale-105 transition-transform">
+          <span id="themeIcon">🌙</span>
         </button>
 
-        <button type="button" onclick="exportBackupJSON()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-3 py-2.5 rounded-xl shadow transition-all active:scale-95 flex items-center gap-1.5 justify-center">
+        <button type="button" onclick="openAddVehicleModal()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-2.5 rounded-xl shadow transition-all active:scale-95 flex items-center gap-1.5 justify-center">
+          <span>🚘</span> Flota / Serwis
+        </button>
+
+        <button type="button" onclick="exportBackupJSON()" class="bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 text-white text-xs font-semibold px-3 py-2.5 rounded-xl shadow transition-all active:scale-95 flex items-center gap-1.5 justify-center">
           <span>💾</span> Kopia JSON
         </button>
 
@@ -61,67 +70,67 @@
           <span>📄</span> Pobierz PDF
         </button>
 
-        <button type="button" onclick="window.print()" class="bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-semibold px-3 py-2.5 rounded-xl shadow transition-all active:scale-95 flex items-center gap-1.5 justify-center">
+        <button type="button" onclick="window.print()" class="bg-slate-200 dark:bg-slate-700 dark:text-white text-slate-800 text-xs font-semibold px-3 py-2.5 rounded-xl shadow transition-all active:scale-95 flex items-center gap-1.5 justify-center">
           <span>🖨️</span> Drukuj
         </button>
 
-        <label class="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3 py-2.5 rounded-xl shadow transition-all active:scale-95 text-center flex items-center gap-1.5 justify-center">
+        <label class="cursor-pointer bg-slate-100 dark:bg-slate-700 dark:text-slate-200 text-slate-700 text-xs font-semibold px-3 py-2.5 rounded-xl shadow transition-all active:scale-95 text-center flex items-center gap-1.5 justify-center">
           <span>📁</span> Import CSV
           <input type="file" id="csvFileInput" accept=".csv" class="hidden" onchange="handleCSVImport(event)">
         </label>
 
-        <button type="button" onclick="clearAllExpenses()" class="bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold px-3 py-2.5 rounded-xl transition-all border border-red-200 justify-center">
+        <button type="button" onclick="clearAllExpenses()" class="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-semibold px-3 py-2.5 rounded-xl transition-all border border-red-200 dark:border-red-800 justify-center">
           🗑️ Czyszczenie
         </button>
       </div>
     </div>
 
-    <!-- Karty Podsumowania (Koszty, Przelicznik EUR i Spalanie Pojazdów) -->
+    <!-- Karty Podsumowania (Koszty PLN, EUR i Pojazdy z PLN/km) -->
     <div id="kpiContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       
-      <!-- Suma Wydatków PLN i przeliczone EUR -->
-      <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+      <!-- Suma Wydatków PLN -->
+      <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
         <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Koszty Całkowite (PLN)</p>
-        <p id="kpiTotalPLN" class="text-2xl font-black text-slate-900 mt-1">0.00 PLN</p>
-        <div class="mt-2 pt-2 border-t border-slate-100 flex justify-between items-center text-xs">
-          <span class="text-slate-500">Suma z przeliczonym EUR:</span>
-          <span id="kpiTotalConvertedPLN" class="font-bold text-emerald-600">0.00 PLN</span>
+        <p id="kpiTotalPLN" class="text-2xl font-black text-slate-900 dark:text-white mt-1">0.00 PLN</p>
+        <div class="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700 flex justify-between items-center text-xs">
+          <span class="text-slate-500 dark:text-slate-400">Razem z EUR:</span>
+          <span id="kpiTotalConvertedPLN" class="font-bold text-emerald-600 dark:text-emerald-400">0.00 PLN</span>
         </div>
       </div>
 
-      <!-- Suma Wydatków EUR z Kalkulatorem Kursu -->
-      <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+      <!-- Suma Wydatków EUR -->
+      <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
         <div class="flex justify-between items-start">
           <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Koszty Całkowite (EUR)</p>
           <div class="flex items-center gap-1 no-print">
             <span class="text-[10px] text-slate-400 font-medium">Kurs:</span>
-            <input type="number" id="eurRate" step="0.01" value="4.25" onchange="processData()" class="w-14 p-1 text-xs border rounded font-bold text-blue-600 bg-slate-50 text-center">
+            <input type="number" id="eurRate" step="0.01" value="4.25" onchange="processData()" class="w-14 p-1 text-xs border dark:border-slate-600 rounded font-bold text-blue-600 dark:bg-slate-700 dark:text-blue-400 text-center">
           </div>
         </div>
-        <p id="kpiTotalEUR" class="text-2xl font-black text-blue-600 mt-1">0.00 EUR</p>
-        <span id="kpiEurInPlnDetails" class="text-xs text-slate-500 mt-1 block">= 0.00 PLN po kursie</span>
+        <p id="kpiTotalEUR" class="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1">0.00 EUR</p>
+        <span id="kpiEurInPlnDetails" class="text-xs text-slate-500 dark:text-slate-400 mt-1 block">= 0.00 PLN po kursie</span>
       </div>
 
-      <!-- Karty samochodów generowane dynamicznie -->
+      <!-- Dynamiie renderowane karty aut -->
 
     </div>
 
     <!-- Tabela Raportu Wydatków -->
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-      <div class="p-5 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <h2 class="font-bold text-slate-800 text-lg">📑 Zestawienie Wpisów i Tankowań</h2>
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+      <div class="p-5 border-b border-slate-100 dark:border-slate-700 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <h2 class="font-bold text-slate-800 dark:text-slate-200 text-lg">📑 Zestawienie Wpisów i Tankowań</h2>
         
-        <!-- Filtry: Pojazd + Zakres Dat -->
+        <!-- Filtry -->
         <div class="flex flex-wrap items-center gap-3 no-print w-full md:w-auto">
-          <div class="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+          <div class="flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
             <span>Od:</span>
-            <input type="date" id="filterDateFrom" onchange="renderTable()" class="p-1.5 border rounded-xl bg-slate-50 focus:outline-none">
+            <input type="date" id="filterDateFrom" onchange="renderTable()" class="p-1.5 border dark:border-slate-600 rounded-xl bg-slate-50 dark:bg-slate-700 focus:outline-none">
           </div>
-          <div class="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+          <div class="flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
             <span>Do:</span>
-            <input type="date" id="filterDateTo" onchange="renderTable()" class="p-1.5 border rounded-xl bg-slate-50 focus:outline-none">
+            <input type="date" id="filterDateTo" onchange="renderTable()" class="p-1.5 border dark:border-slate-600 rounded-xl bg-slate-50 dark:bg-slate-700 focus:outline-none">
           </div>
-          <select id="filterVehicle" onchange="renderTable()" class="text-xs p-2 border rounded-xl bg-slate-50 font-semibold focus:outline-none">
+          <select id="filterVehicle" onchange="renderTable()" class="text-xs p-2 border dark:border-slate-600 rounded-xl bg-slate-50 dark:bg-slate-700 font-semibold focus:outline-none">
             <!-- Wypełniane dynamicznie -->
           </select>
         </div>
@@ -130,7 +139,7 @@
       <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse text-sm">
           <thead>
-            <tr class="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200 text-xs uppercase tracking-wider">
+            <tr class="bg-slate-50 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-700 text-xs uppercase tracking-wider">
               <th class="p-4">Data</th>
               <th class="p-4">Pojazd</th>
               <th class="p-4">Kategoria</th>
@@ -141,9 +150,9 @@
               <th class="p-4 text-center no-print">Akcja</th>
             </tr>
           </thead>
-          <tbody id="expenseTableBody" class="divide-y divide-slate-100 text-slate-700">
+          <tbody id="expenseTableBody" class="divide-y divide-slate-100 dark:divide-slate-700 text-slate-700 dark:text-slate-300">
             <tr>
-              <td colspan="8" class="p-6 text-center text-slate-400">Brak danych. Wczytaj dane z pamięci, pliku JSON lub CSV.</td>
+              <td colspan="8" class="p-6 text-center text-slate-400">Brak danych. Wczytaj dane z pamięci lub pliku JSON.</td>
             </tr>
           </tbody>
         </table>
@@ -152,37 +161,43 @@
 
   </div>
 
-  <!-- MODAL: Zarządzanie Flotą Pojazdów -->
+  <!-- MODAL: Zarządzanie Flotą i Alertami Serwisowymi -->
   <div id="addVehicleModal" class="fixed inset-0 bg-black/70 hidden z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
-    <div class="bg-white rounded-2xl p-6 max-w-md w-full space-y-5 shadow-2xl relative max-h-[90vh] overflow-y-auto">
-      <div class="flex justify-between items-center border-b pb-3">
-        <h3 class="text-lg font-bold text-slate-900">🚘 Zarządzanie Flotą Pojazdów</h3>
+    <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full space-y-5 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b dark:border-slate-700 pb-3">
+        <h3 class="text-lg font-bold text-slate-900 dark:text-white">🚘 Zarządzanie Flotą i Serwisem</h3>
         <button type="button" onclick="closeAddVehicleModal()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
       </div>
 
-      <form id="vehicleForm" onsubmit="saveNewVehicle(event)" class="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
-        <h4 class="font-bold text-xs uppercase text-slate-500 tracking-wider">Dodaj nowy pojazd</h4>
+      <!-- Formularz Nowego Pojazdu z Ustawieniem Serwisu -->
+      <form id="vehicleForm" onsubmit="saveNewVehicle(event)" class="space-y-3 bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+        <h4 class="font-bold text-xs uppercase text-slate-500 dark:text-slate-400 tracking-wider">Dodaj nowy pojazd</h4>
         <div>
-          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Nazwa / Model</label>
-          <input type="text" id="newVehName" required placeholder="np. Mercedes Sprinter" class="w-full p-2.5 border rounded-lg bg-white text-sm font-medium focus:outline-none">
+          <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Nazwa / Model</label>
+          <input type="text" id="newVehName" required placeholder="np. Mercedes Sprinter" class="w-full p-2.5 border dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-sm font-medium focus:outline-none">
         </div>
         <div>
-          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Numer rejestracyjny</label>
-          <input type="text" id="newVehReg" required placeholder="np. LU 12345" class="w-full p-2.5 border rounded-lg bg-white text-sm font-bold uppercase focus:outline-none">
+          <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Numer rejestracyjny</label>
+          <input type="text" id="newVehReg" required placeholder="np. LU 12345" class="w-full p-2.5 border dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-sm font-bold uppercase focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Kolejny serwis przy km (olej/przegląd)</label>
+          <input type="number" id="nextServiceMileage" placeholder="np. 300000" class="w-full p-2.5 border dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-sm font-medium focus:outline-none">
         </div>
         <button type="submit" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow text-sm transition-all">
           ➕ Dodaj do floty
         </button>
       </form>
 
+      <!-- Lista Obecnych Pojazdów -->
       <div class="space-y-2">
-        <h4 class="font-bold text-xs uppercase text-slate-500 tracking-wider">Aktualne pojazdy we flocie</h4>
+        <h4 class="font-bold text-xs uppercase text-slate-500 dark:text-slate-400 tracking-wider">Aktualne pojazdy we flocie</h4>
         <div id="modalVehicleList" class="space-y-2 max-h-48 overflow-y-auto">
-          <!-- Lista generowana przez JS -->
+          <!-- Generowanie JS -->
         </div>
       </div>
 
-      <button type="button" onclick="closeAddVehicleModal()" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-sm transition-all">
+      <button type="button" onclick="closeAddVehicleModal()" class="w-full py-2.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200 font-semibold rounded-xl text-sm transition-all">
         Zamknij
       </button>
     </div>
@@ -199,12 +214,12 @@
   </div>
 
   <!-- Dolna Nawigacja PWA -->
-  <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around items-center p-2 shadow-lg z-50 no-print">
-    <a href="index.html" class="flex flex-col items-center text-xs font-semibold text-gray-500 hover:text-blue-600 focus:outline-none py-1">
+  <nav class="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex justify-around items-center p-2 shadow-lg z-50 no-print">
+    <a href="index.html" class="flex flex-col items-center text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-blue-600 focus:outline-none py-1">
       <span class="text-xl">➕</span>
       <span>Dodaj Wydatek</span>
     </a>
-    <a href="panel.html" class="flex flex-col items-center text-xs font-semibold text-blue-600 focus:outline-none py-1">
+    <a href="panel.html" class="flex flex-col items-center text-xs font-semibold text-blue-600 dark:text-blue-400 focus:outline-none py-1">
       <span class="text-xl">📊</span>
       <span>Flota i Koszty</span>
     </a>
@@ -217,9 +232,31 @@
     let fleetVehicles = [];
 
     const defaultVehicles = [
-      { registration: 'LLE 44468', name: 'Audi A4 B6' },
-      { registration: 'LUB 6894R', name: 'Opel' }
+      { registration: 'LLE 44468', name: 'Audi A4 B6', nextService: 290000 },
+      { registration: 'LUB 6894R', name: 'Opel', nextService: 210000 }
     ];
+
+    function initTheme() {
+      if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+        document.getElementById('themeIcon').innerText = '☀️';
+      } else {
+        document.documentElement.classList.remove('dark');
+        document.getElementById('themeIcon').innerText = '🌙';
+      }
+    }
+
+    function toggleDarkMode() {
+      if (document.documentElement.classList.contains('dark')) {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+        document.getElementById('themeIcon').innerText = '🌙';
+      } else {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+        document.getElementById('themeIcon').innerText = '☀️';
+      }
+    }
 
     function initVehicles() {
       const stored = localStorage.getItem('fleet_vehicles');
@@ -249,12 +286,13 @@
       }
 
       container.innerHTML = fleetVehicles.map(v => `
-        <div class="flex items-center justify-between bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-xs">
+        <div class="flex items-center justify-between bg-slate-50 dark:bg-slate-700/50 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs">
           <div>
-            <span class="font-bold text-slate-800">${v.name}</span>
-            <span class="ml-1 bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded font-mono font-bold">${v.registration}</span>
+            <span class="font-bold text-slate-800 dark:text-slate-200">${v.name}</span>
+            <span class="ml-1 bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-300 px-1.5 py-0.5 rounded font-mono font-bold">${v.registration}</span>
+            ${v.nextService ? `<div class="text-[10px] text-slate-400">Serwis przy: ${v.nextService} km</div>` : ''}
           </div>
-          <button type="button" onclick="deleteVehicle('${v.registration}')" class="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded font-bold transition-colors">
+          <button type="button" onclick="deleteVehicle('${v.registration}')" class="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30 p-1 rounded font-bold transition-colors">
             🗑️ Usuń
           </button>
         </div>
@@ -290,6 +328,7 @@
       e.preventDefault();
       const name = document.getElementById('newVehName').value.trim();
       const registration = document.getElementById('newVehReg').value.trim().toUpperCase();
+      const nextService = parseInt(document.getElementById('nextServiceMileage').value) || null;
 
       if (!name || !registration) return;
 
@@ -298,7 +337,7 @@
         return;
       }
 
-      fleetVehicles.push({ name, registration });
+      fleetVehicles.push({ name, registration, nextService });
       localStorage.setItem('fleet_vehicles', JSON.stringify(fleetVehicles));
 
       document.getElementById('vehicleForm').reset();
@@ -306,7 +345,6 @@
       processData();
     }
 
-    // Tworzenie i Wczytywanie Kopia Zapasowej JSON
     function exportBackupJSON() {
       const backupData = {
         vehicles: fleetVehicles,
@@ -458,38 +496,61 @@
       const grandTotalPLN = totalPLN + eurInPln;
 
       const staticCards = `
-        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+        <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
           <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Koszty Całkowite (PLN)</p>
-          <p id="kpiTotalPLN" class="text-2xl font-black text-slate-900 mt-1">${totalPLN.toFixed(2)} PLN</p>
-          <div class="mt-2 pt-2 border-t border-slate-100 flex justify-between items-center text-xs">
-            <span class="text-slate-500">Razem z EUR:</span>
-            <span id="kpiTotalConvertedPLN" class="font-bold text-emerald-600">${grandTotalPLN.toFixed(2)} PLN</span>
+          <p id="kpiTotalPLN" class="text-2xl font-black text-slate-900 dark:text-white mt-1">${totalPLN.toFixed(2)} PLN</p>
+          <div class="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700 flex justify-between items-center text-xs">
+            <span class="text-slate-500 dark:text-slate-400">Razem z EUR:</span>
+            <span id="kpiTotalConvertedPLN" class="font-bold text-emerald-600 dark:text-emerald-400">${grandTotalPLN.toFixed(2)} PLN</span>
           </div>
         </div>
 
-        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+        <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
           <div class="flex justify-between items-start">
             <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Koszty Całkowite (EUR)</p>
             <div class="flex items-center gap-1 no-print">
               <span class="text-[10px] text-slate-400 font-medium">Kurs:</span>
-              <input type="number" id="eurRate" step="0.01" value="${rate}" onchange="processData()" class="w-14 p-1 text-xs border rounded font-bold text-blue-600 bg-slate-50 text-center">
+              <input type="number" id="eurRate" step="0.01" value="${rate}" onchange="processData()" class="w-14 p-1 text-xs border dark:border-slate-600 rounded font-bold text-blue-600 dark:bg-slate-700 dark:text-blue-400 text-center">
             </div>
           </div>
-          <p id="kpiTotalEUR" class="text-2xl font-black text-blue-600 mt-1">${totalEUR.toFixed(2)} EUR</p>
-          <span id="kpiEurInPlnDetails" class="text-xs text-slate-500 mt-1 block">= ${eurInPln.toFixed(2)} PLN (kurs ${rate})</span>
+          <p id="kpiTotalEUR" class="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1">${totalEUR.toFixed(2)} EUR</p>
+          <span id="kpiEurInPlnDetails" class="text-xs text-slate-500 dark:text-slate-400 mt-1 block">= ${eurInPln.toFixed(2)} PLN (kurs ${rate})</span>
         </div>
       `;
 
       const vehicleCards = fleetVehicles.map(v => {
-        const stats = getFuelStats(v.registration);
+        const stats = getVehicleStats(v);
+        
+        let alertClass = "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800";
+        let alertBadge = "";
+
+        if (stats.serviceNeeded) {
+          alertClass = "border-amber-400 dark:border-amber-500 bg-amber-50/50 dark:bg-amber-900/20";
+          alertBadge = `<span class="text-[10px] bg-amber-500 text-white font-bold px-1.5 py-0.5 rounded">⚠️ Wymagany Serwis</span>`;
+        }
+
         return `
-          <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 bg-gradient-to-br from-white to-blue-50/30">
+          <div class="p-5 rounded-2xl shadow-sm border ${alertClass}">
             <div class="flex justify-between items-start">
-              <p class="text-xs font-semibold text-blue-600 uppercase tracking-wider">${v.name}</p>
-              <span class="text-xs bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded">${v.registration}</span>
+              <div>
+                <p class="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">${v.name}</p>
+                <span class="text-xs bg-blue-100 dark:bg-slate-700 text-blue-800 dark:text-blue-300 font-bold px-2 py-0.5 rounded font-mono">${v.registration}</span>
+              </div>
+              ${alertBadge}
             </div>
-            <p class="text-2xl font-black text-slate-900 mt-1">${stats.avg}</p>
-            <span class="text-xs text-slate-500 mt-1 block">${stats.details}</span>
+            
+            <div class="mt-3 flex justify-between items-baseline">
+              <div>
+                <p class="text-xs text-slate-400">Spalanie</p>
+                <p class="text-xl font-black text-slate-900 dark:text-white">${stats.avgFuel}</p>
+              </div>
+              <div class="text-right">
+                <p class="text-xs text-slate-400">Koszt / 1 km</p>
+                <p class="text-xl font-black text-emerald-600 dark:text-emerald-400">${stats.costPerKm}</p>
+              </div>
+            </div>
+
+            <span class="text-[11px] text-slate-500 dark:text-slate-400 mt-2 block border-t dark:border-slate-700 pt-2">${stats.details}</span>
           </div>
         `;
       }).join('');
@@ -497,33 +558,65 @@
       container.innerHTML = staticCards + vehicleCards;
     }
 
-    function getFuelStats(regNumber) {
-      const fuelEntries = globalExpenses
-        .filter(e => e.vehicle.includes(regNumber) && e.category === 'Paliwo' && e.liters && e.mileage)
+    function getVehicleStats(veh) {
+      const regNumber = veh.registration;
+      
+      const vExpenses = globalExpenses.filter(e => e.vehicle.includes(regNumber));
+      
+      const fuelEntries = vExpenses
+        .filter(e => e.category === 'Paliwo' && e.liters && e.mileage)
         .sort((a, b) => a.mileage - b.mileage);
 
-      if (fuelEntries.length < 2) {
-        return { avg: '-- L/100km', details: 'Min. 2 tankowania z licznikiem' };
+      let avgFuel = '-- L/100km';
+      let costPerKm = '-- PLN/km';
+      let details = 'Brak wpisów paliwowych';
+      let serviceNeeded = false;
+
+      let maxMileage = 0;
+
+      if (fuelEntries.length >= 1) {
+        maxMileage = fuelEntries[fuelEntries.length - 1].mileage;
       }
 
-      const minMileage = fuelEntries[0].mileage;
-      const maxMileage = fuelEntries[fuelEntries.length - 1].mileage;
-      const totalKm = maxMileage - minMileage;
-
-      let totalLiters = 0;
-      for (let i = 1; i < fuelEntries.length; i++) {
-        totalLiters += fuelEntries[i].liters;
+      if (veh.nextService && maxMileage > 0) {
+        if (veh.nextService - maxMileage <= 1000) {
+          serviceNeeded = true;
+        }
       }
 
-      if (totalKm <= 0) {
-        return { avg: 'Błąd km', details: 'Licznik nie wzrósł' };
+      if (fuelEntries.length >= 2) {
+        const minMileage = fuelEntries[0].mileage;
+        const totalKm = maxMileage - minMileage;
+
+        let totalLiters = 0;
+        let totalFuelCostPLN = 0;
+
+        for (let i = 1; i < fuelEntries.length; i++) {
+          totalLiters += fuelEntries[i].liters;
+        }
+
+        fuelEntries.forEach(e => {
+          if (e.currency === 'EUR') {
+            const rate = parseFloat(document.getElementById('eurRate') ? document.getElementById('eurRate').value : 4.25) || 4.25;
+            totalFuelCostPLN += (e.amount * rate);
+          } else {
+            totalFuelCostPLN += e.amount;
+          }
+        });
+
+        if (totalKm > 0) {
+          const avg = (totalLiters / totalKm) * 100;
+          const cPerKm = totalFuelCostPLN / totalKm;
+          
+          avgFuel = avg.toFixed(2) + ' L';
+          costPerKm = cPerKm.toFixed(2) + ' PLN';
+          details = `Dystans: ${totalKm} km | Licznik: ${maxMileage} km`;
+        }
+      } else if (maxMileage > 0) {
+        details = `Licznik ostatni: ${maxMileage} km (Min. 2 tankowania do wyliczeń)`;
       }
 
-      const avgConsumption = (totalLiters / totalKm) * 100;
-      return {
-        avg: avgConsumption.toFixed(2) + ' L/100km',
-        details: `Dystans: ${totalKm} km | ${totalLiters.toFixed(1)} L`
-      };
+      return { avgFuel, costPerKm, details, serviceNeeded };
     }
 
     function renderTable() {
@@ -534,12 +627,8 @@
 
       let filtered = globalExpenses.filter(e => filter === 'ALL' || e.vehicle.includes(filter));
 
-      if (dateFrom) {
-        filtered = filtered.filter(e => e.date >= dateFrom);
-      }
-      if (dateTo) {
-        filtered = filtered.filter(e => e.date <= dateTo);
-      }
+      if (dateFrom) filtered = filtered.filter(e => e.date >= dateFrom);
+      if (dateTo) filtered = filtered.filter(e => e.date <= dateTo);
 
       if (filtered.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" class="p-6 text-center text-slate-400">Brak danych dla wybranych filtrów.</td></tr>';
@@ -547,16 +636,16 @@
       }
 
       tbody.innerHTML = filtered.slice().reverse().map(e => `
-        <tr class="hover:bg-slate-50/80 transition-colors border-b border-slate-100">
+        <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-700/50 transition-colors border-b border-slate-100 dark:border-slate-700">
           <td class="p-4 font-medium">${e.date}</td>
-          <td class="p-4"><span class="bg-slate-100 font-bold text-slate-700 px-2 py-1 rounded text-xs">${e.vehicle}</span></td>
+          <td class="p-4"><span class="bg-slate-100 dark:bg-slate-700 font-bold text-slate-700 dark:text-slate-200 px-2 py-1 rounded text-xs font-mono">${e.vehicle}</span></td>
           <td class="p-4">${e.category}</td>
-          <td class="p-4 font-semibold text-blue-600">${e.liters ? e.liters.toFixed(2) + ' L' : '-'}</td>
+          <td class="p-4 font-semibold text-blue-600 dark:text-blue-400">${e.liters ? e.liters.toFixed(2) + ' L' : '-'}</td>
           <td class="p-4">${e.mileage ? e.mileage + ' km' : '-'}</td>
-          <td class="p-4 font-bold ${e.currency === 'EUR' ? 'text-blue-600' : 'text-slate-900'}">${e.amount.toFixed(2)} ${e.currency}</td>
+          <td class="p-4 font-bold ${e.currency === 'EUR' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-900 dark:text-white'}">${e.amount.toFixed(2)} ${e.currency}</td>
           <td class="p-4 text-center">
             ${e.photo ? `
-              <button type="button" onclick="openPhotoModal('${e.photo}')" class="inline-flex items-center gap-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold px-2.5 py-1 rounded-lg text-xs transition-colors border border-blue-200 no-print">
+              <button type="button" onclick="openPhotoModal('${e.photo}')" class="inline-flex items-center gap-1 bg-blue-50 dark:bg-slate-700 text-blue-700 dark:text-blue-300 font-semibold px-2.5 py-1 rounded-lg text-xs transition-colors border border-blue-200 dark:border-slate-600 no-print">
                 📸 Powiększ
               </button>
             ` : (e.hasPhoto ? `
@@ -634,6 +723,7 @@
     }
 
     window.addEventListener('DOMContentLoaded', () => {
+      initTheme();
       initVehicles();
       loadFromLocalStorage();
     });

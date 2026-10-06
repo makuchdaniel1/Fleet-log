@@ -5,37 +5,45 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FleetLog AI - Rejestracja Wydatków</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class' }
+  </script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#2563eb">
 </head>
-<body class="bg-slate-100 text-slate-800 min-h-screen p-4 pb-20">
+<body class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen p-4 pb-20 transition-colors duration-200">
 
   <div class="max-w-md mx-auto space-y-4">
     
     <!-- Nagłówek -->
-    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-      <h1 class="text-xl font-bold text-slate-900 flex items-center gap-2">
-        <span>🚛</span> FleetLog — Rejestr
-      </h1>
-      <p class="text-xs text-slate-500 mt-1">Szybkie wprowadzanie tankowań i kosztów trasy</p>
+    <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex justify-between items-center">
+      <div>
+        <h1 class="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span>🚛</span> FleetLog — Rejestr
+        </h1>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Szybkie wprowadzanie tankowań i kosztów trasy</p>
+      </div>
+      <button type="button" onclick="toggleDarkMode()" class="p-2 bg-slate-100 dark:bg-slate-700 rounded-xl text-lg hover:scale-105 transition-transform">
+        <span id="themeIcon">🌙</span>
+      </button>
     </div>
 
     <!-- Formularz -->
-    <form id="expenseForm" onsubmit="saveExpense(event)" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+    <form id="expenseForm" onsubmit="saveExpense(event)" class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-4">
       
-      <!-- Wybór Pojazdu (Dynamiczny z localStorage) -->
+      <!-- Wybór Pojazdu -->
       <div>
-        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Pojazd</label>
-        <select id="vehicle" required class="w-full p-3 border rounded-xl bg-slate-50 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none">
-          <!-- Wypełniane dynamicznie przez JS -->
+        <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Pojazd</label>
+        <select id="vehicle" required class="w-full p-3 border rounded-xl bg-slate-50 dark:bg-slate-700 dark:border-slate-600 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          <!-- Dynamicznie wczytywane -->
         </select>
       </div>
 
       <!-- Kategoria & Data -->
       <div class="grid grid-cols-2 gap-3">
         <div>
-          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Kategoria</label>
-          <select id="category" onchange="toggleFuelFields()" class="w-full p-3 border rounded-xl bg-slate-50 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Kategoria</label>
+          <select id="category" onchange="toggleFuelFields()" class="w-full p-3 border rounded-xl bg-slate-50 dark:bg-slate-700 dark:border-slate-600 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none">
             <option value="Paliwo">Paliwo</option>
             <option value="Opłata drogowa">e-TOLL / Autostrada</option>
             <option value="Serwis">Serwis / Części</option>
@@ -43,32 +51,32 @@
           </select>
         </div>
         <div>
-          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Data</label>
-          <input type="date" id="date" required class="w-full p-3 border rounded-xl bg-slate-50 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Data</label>
+          <input type="date" id="date" required class="w-full p-3 border rounded-xl bg-slate-50 dark:bg-slate-700 dark:border-slate-600 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none">
         </div>
       </div>
 
       <!-- Pola specyficzne dla paliwa -->
-      <div id="fuelFields" class="grid grid-cols-2 gap-3 bg-blue-50/50 p-3 rounded-xl border border-blue-100">
+      <div id="fuelFields" class="grid grid-cols-2 gap-3 bg-blue-50/50 dark:bg-blue-900/20 p-3 rounded-xl border border-blue-100 dark:border-blue-800">
         <div>
-          <label class="block text-xs font-bold text-blue-700 uppercase mb-1">Litry (L)</label>
-          <input type="number" step="0.01" id="fuelLiters" placeholder="np. 55.40" class="w-full p-2.5 border rounded-lg font-medium focus:outline-none">
+          <label class="block text-xs font-bold text-blue-700 dark:text-blue-400 uppercase mb-1">Litry (L)</label>
+          <input type="number" step="0.01" id="fuelLiters" placeholder="np. 55.40" class="w-full p-2.5 border dark:border-slate-600 dark:bg-slate-700 rounded-lg font-medium focus:outline-none">
         </div>
         <div>
-          <label class="block text-xs font-bold text-blue-700 uppercase mb-1">Stan licznika (km)</label>
-          <input type="number" id="mileage" placeholder="np. 284500" class="w-full p-2.5 border rounded-lg font-medium focus:outline-none">
+          <label class="block text-xs font-bold text-blue-700 dark:text-blue-400 uppercase mb-1">Stan licznika (km)</label>
+          <input type="number" id="mileage" placeholder="np. 284500" class="w-full p-2.5 border dark:border-slate-600 dark:bg-slate-700 rounded-lg font-medium focus:outline-none">
         </div>
       </div>
 
       <!-- Kwota i Waluta -->
       <div class="grid grid-cols-3 gap-3">
         <div class="col-span-2">
-          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Kwota brutto</label>
-          <input type="number" step="0.01" id="amount" required placeholder="0.00" class="w-full p-3 border rounded-xl bg-slate-50 font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Kwota brutto</label>
+          <input type="number" step="0.01" id="amount" required placeholder="0.00" class="w-full p-3 border rounded-xl bg-slate-50 dark:bg-slate-700 dark:border-slate-600 font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none">
         </div>
         <div>
-          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Waluta</label>
-          <select id="currency" class="w-full p-3 border rounded-xl bg-slate-50 font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Waluta</label>
+          <select id="currency" class="w-full p-3 border rounded-xl bg-slate-50 dark:bg-slate-700 dark:border-slate-600 font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none">
             <option value="PLN">PLN</option>
             <option value="EUR">EUR</option>
           </select>
@@ -77,15 +85,15 @@
 
       <!-- Aparat i Zdjęcie -->
       <div>
-        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Zdjęcie paragonu / faktury</label>
+        <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Zdjęcie paragonu / faktury</label>
         <input type="file" id="photoInput" accept="image/*" capture="environment" onchange="handlePhotoUpload(event)" class="hidden">
         
-        <button type="button" onclick="document.getElementById('photoInput').click()" class="w-full py-3 px-4 border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-xl bg-slate-50 text-slate-600 font-semibold flex items-center justify-center gap-2 transition-colors">
+        <button type="button" onclick="document.getElementById('photoInput').click()" class="w-full py-3 px-4 border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-blue-500 rounded-xl bg-slate-50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 font-semibold flex items-center justify-center gap-2 transition-colors">
           <span>📷</span> Zrób zdjęcie paragonu
         </button>
         
         <div id="photoPreviewContainer" class="hidden mt-2 relative">
-          <img id="photoPreview" src="" class="w-full h-32 object-cover rounded-xl border border-slate-200">
+          <img id="photoPreview" src="" class="w-full h-32 object-cover rounded-xl border border-slate-200 dark:border-slate-700">
           <button type="button" onclick="removePhoto()" class="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 text-xs px-2 shadow">✕ Usuń</button>
         </div>
       </div>
@@ -98,12 +106,12 @@
     </form>
 
     <!-- Ostatnio dodane lokalnie -->
-    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-3">
-      <div class="flex justify-between items-center border-b pb-2">
-        <h2 class="font-bold text-slate-800 text-sm">Ostatnie wpisy z tego telefonu</h2>
-        <button onclick="exportToCSV()" class="text-xs bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg font-semibold text-slate-600">📁 Pobierz CSV</button>
+    <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-3">
+      <div class="flex justify-between items-center border-b dark:border-slate-700 pb-2">
+        <h2 class="font-bold text-slate-800 dark:text-slate-200 text-sm">Ostatnie wpisy z tego telefonu</h2>
+        <button onclick="exportToCSV()" class="text-xs bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 px-2.5 py-1 rounded-lg font-semibold text-slate-600 dark:text-slate-300">📁 Pobierz CSV</button>
       </div>
-      <div id="recentExpensesList" class="space-y-2 text-xs text-slate-500">
+      <div id="recentExpensesList" class="space-y-2 text-xs text-slate-500 dark:text-slate-400">
         <p class="text-center py-2">Brak wpisów w pamięci.</p>
       </div>
     </div>
@@ -121,12 +129,12 @@
   </div>
 
   <!-- Dolny Pasek Nawigacji PWA -->
-  <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around items-center p-2 shadow-lg z-50">
-    <a href="index.html" class="flex flex-col items-center text-xs font-semibold text-blue-600 focus:outline-none py-1">
+  <nav class="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex justify-around items-center p-2 shadow-lg z-50">
+    <a href="index.html" class="flex flex-col items-center text-xs font-semibold text-blue-600 dark:text-blue-400 focus:outline-none py-1">
       <span class="text-xl">➕</span>
       <span>Dodaj Wydatek</span>
     </a>
-    <a href="panel.html" class="flex flex-col items-center text-xs font-semibold text-gray-500 hover:text-blue-600 focus:outline-none py-1">
+    <a href="panel.html" class="flex flex-col items-center text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-blue-600 focus:outline-none py-1">
       <span class="text-xl">📊</span>
       <span>Flota i Koszty</span>
     </a>
@@ -140,6 +148,28 @@
     ];
 
     document.getElementById('date').valueAsDate = new Date();
+
+    function initTheme() {
+      if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+        document.getElementById('themeIcon').innerText = '☀️';
+      } else {
+        document.documentElement.classList.remove('dark');
+        document.getElementById('themeIcon').innerText = '🌙';
+      }
+    }
+
+    function toggleDarkMode() {
+      if (document.documentElement.classList.contains('dark')) {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+        document.getElementById('themeIcon').innerText = '🌙';
+      } else {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+        document.getElementById('themeIcon').innerText = '☀️';
+      }
+    }
 
     function loadVehicleOptions() {
       const storedVehicles = JSON.parse(localStorage.getItem('fleet_vehicles') || 'null');
@@ -237,14 +267,14 @@
       }
 
       container.innerHTML = existing.slice().reverse().slice(0, 5).map(e => `
-        <div class="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+        <div class="flex items-center justify-between p-2.5 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-100 dark:border-slate-700">
           <div>
-            <span class="font-bold text-slate-800">${e.vehicle}</span> — ${e.category}
-            <div class="text-[10px] text-slate-400">${e.date} ${e.fuel_liters ? '| ' + e.fuel_liters + ' L' : ''}</div>
+            <span class="font-bold text-slate-800 dark:text-slate-200">${e.vehicle}</span> — ${e.category}
+            <div class="text-[10px] text-slate-400 dark:text-slate-400">${e.date} ${e.fuel_liters ? '| ' + e.fuel_liters + ' L' : ''}</div>
           </div>
           <div class="flex items-center gap-2">
-            <span class="font-bold text-slate-900">${e.amount_gross.toFixed(2)} ${e.currency}</span>
-            ${e.photo ? `<button type="button" onclick="openPhotoModal('${e.photo}')" class="text-blue-600 bg-blue-50 px-2 py-1 rounded text-[10px] font-bold border border-blue-100">📸</button>` : ''}
+            <span class="font-bold text-slate-900 dark:text-white">${e.amount_gross.toFixed(2)} ${e.currency}</span>
+            ${e.photo ? `<button type="button" onclick="openPhotoModal('${e.photo}')" class="text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-slate-800 px-2 py-1 rounded text-[10px] font-bold border border-blue-100 dark:border-blue-900">📸</button>` : ''}
           </div>
         </div>
       `).join('');
@@ -282,6 +312,7 @@
     }
 
     window.addEventListener('DOMContentLoaded', () => {
+      initTheme();
       loadVehicleOptions();
       renderRecentExpenses();
       if ('serviceWorker' in navigator) {
