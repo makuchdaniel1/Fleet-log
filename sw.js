@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fleetlog-cache-v13';
+const CACHE_NAME = 'fleetlog-cache-v14';
 const urlsToCache = [
   './',
   './index.html',
