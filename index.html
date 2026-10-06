@@ -8,6 +8,8 @@
   <script>
     tailwind.config = { darkMode: 'class' }
   </script>
+  <!-- Biblioteka OCR do odczytywania tekstu ze zdjęć w przeglądarce -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#2563eb">
 </head>
@@ -21,7 +23,7 @@
         <h1 class="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
           <span>🚛</span> FleetLog — Rejestr
         </h1>
-        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Szybkie wprowadzanie tankowań i kosztów trasy</p>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Automatyczny odczyt paragonów i kosztów</p>
       </div>
       <button type="button" onclick="toggleDarkMode()" class="p-2 bg-slate-100 dark:bg-slate-700 rounded-xl text-lg hover:scale-105 transition-transform">
         <span id="themeIcon">🌙</span>
@@ -31,6 +33,32 @@
     <!-- Formularz -->
     <form id="expenseForm" onsubmit="saveExpense(event)" class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-4">
       
+      <!-- Aparat / Skaner na samej górze dla wygody -->
+      <div>
+        <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Zrób zdjęcie paragonu (Skaner OCR)</label>
+        <input type="file" id="photoInput" accept="image/*" capture="environment" onchange="handlePhotoUpload(event)" class="hidden">
+        
+        <button type="button" onclick="document.getElementById('photoInput').click()" class="w-full py-3.5 px-4 border-2 border-dashed border-blue-400 dark:border-blue-600 hover:border-blue-500 rounded-xl bg-blue-50/50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 font-bold flex items-center justify-center gap-2 transition-colors">
+          <span>📷</span> Zrób zdjęcie paragonu
+        </button>
+        
+        <!-- Pasek postępu skanowania -->
+        <div id="ocrStatus" class="hidden mt-2 p-3 bg-slate-100 dark:bg-slate-700 rounded-xl text-xs space-y-1">
+          <div class="flex justify-between font-bold text-slate-700 dark:text-slate-200">
+            <span id="ocrStatusText">Skanowanie paragonu...</span>
+            <span id="ocrPercent">0%</span>
+          </div>
+          <div class="w-full bg-slate-200 dark:bg-slate-600 h-2 rounded-full overflow-hidden">
+            <div id="ocrProgressBar" class="bg-blue-600 h-full w-0 transition-all duration-200"></div>
+          </div>
+        </div>
+
+        <div id="photoPreviewContainer" class="hidden mt-2 relative">
+          <img id="photoPreview" src="" class="w-full h-32 object-cover rounded-xl border border-slate-200 dark:border-slate-700">
+          <button type="button" onclick="removePhoto()" class="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 text-xs px-2 shadow">✕ Usuń</button>
+        </div>
+      </div>
+
       <!-- Wybór Pojazdu -->
       <div>
         <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Pojazd</label>
@@ -80,21 +108,6 @@
             <option value="PLN">PLN</option>
             <option value="EUR">EUR</option>
           </select>
-        </div>
-      </div>
-
-      <!-- Aparat i Zdjęcie -->
-      <div>
-        <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Zdjęcie paragonu / faktury</label>
-        <input type="file" id="photoInput" accept="image/*" capture="environment" onchange="handlePhotoUpload(event)" class="hidden">
-        
-        <button type="button" onclick="document.getElementById('photoInput').click()" class="w-full py-3 px-4 border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-blue-500 rounded-xl bg-slate-50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 font-semibold flex items-center justify-center gap-2 transition-colors">
-          <span>📷</span> Zrób zdjęcie paragonu
-        </button>
-        
-        <div id="photoPreviewContainer" class="hidden mt-2 relative">
-          <img id="photoPreview" src="" class="w-full h-32 object-cover rounded-xl border border-slate-200 dark:border-slate-700">
-          <button type="button" onclick="removePhoto()" class="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 text-xs px-2 shadow">✕ Usuń</button>
         </div>
       </div>
 
@@ -218,10 +231,87 @@
           currentCompressedPhoto = canvas.toDataURL('image/jpeg', 0.6);
           document.getElementById('photoPreview').src = currentCompressedPhoto;
           document.getElementById('photoPreviewContainer').classList.remove('hidden');
+
+          // Uruchomienie skanera OCR
+          runOCRScanner(currentCompressedPhoto);
         };
         img.src = e.target.result;
       };
       reader.readAsDataURL(file);
+    }
+
+    // Funkcja analizująca tekst ze zdjęcia za pomocą Tesseract.js
+    async function runOCRScanner(imageSrc) {
+      const statusDiv = document.getElementById('ocrStatus');
+      const statusText = document.getElementById('ocrStatusText');
+      const progressBar = document.getElementById('ocrProgressBar');
+      const percentText = document.getElementById('ocrPercent');
+
+      statusDiv.classList.remove('hidden');
+      statusText.innerText = "Inicjalizacja skanera...";
+      progressBar.style.width = "0%";
+      percentText.innerText = "0%";
+
+      try {
+        const worker = await Tesseract.createWorker('pol');
+        
+        const ret = await worker.recognize(imageSrc);
+        const text = ret.data.text;
+        
+        statusText.innerText = "Analizowanie danych z paragonu...";
+        progressBar.style.width = "100%";
+        percentText.innerText = "100%";
+
+        parseReceiptText(text);
+
+        await worker.terminate();
+
+        setTimeout(() => {
+          statusDiv.classList.add('hidden');
+        }, 1500);
+
+      } catch (err) {
+        console.error("Błąd OCR:", err);
+        statusText.innerText = "Nie udało się odczytać tekstu automatycznie.";
+        setTimeout(() => {
+          statusDiv.classList.add('hidden');
+        }, 2000);
+      }
+    }
+
+    // Parser tekstu paragonu
+    function parseReceiptText(text) {
+      console.log("Odczytany tekst z OCR:\n", text);
+
+      // Wykrywanie waluty
+      if (text.includes('EUR') || text.includes('€')) {
+        document.getElementById('currency').value = 'EUR';
+      } else {
+        document.getElementById('currency').value = 'PLN';
+      }
+
+      // Szukanie litrów (np. "55,40 l" lub "55.40L")
+      const literMatch = text.match(/(\d+[\.,]\d{2})\s*(l|L|litr|litry)/i);
+      if (literMatch) {
+        const liters = parseFloat(literMatch[1].replace(',', '.'));
+        if (!isNaN(liters)) {
+          document.getElementById('fuelLiters').value = liters;
+          document.getElementById('category').value = 'Paliwo';
+          toggleFuelFields();
+        }
+      }
+
+      // Szukanie kwoty brutto / SUMA (np. "SUMA 250,50" lub "PLN 250.50")
+      const sumMatch = text.match(/(SUMA|PLN|EUR|RAZEM|TOTAL)[\s\:=]*(\d+[\.,]\d{2})/i) || 
+                       text.match(/(\d+[\.,]\d{2})\s*(PLN|EUR)/i);
+
+      if (sumMatch) {
+        const valStr = sumMatch[2] || sumMatch[1];
+        const amount = parseFloat(valStr.replace(',', '.'));
+        if (!isNaN(amount)) {
+          document.getElementById('amount').value = amount;
+        }
+      }
     }
 
     function removePhoto() {
