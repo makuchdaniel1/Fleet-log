@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FleetLog AI - Rejestracja Wydatków</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2563eb">
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen p-4 pb-20">
+
+  <div class="max-w-md mx-auto space-y-4">
+    
+    <!-- Nagłówek -->
+    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+      <h1 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+        <span>🚛</span> FleetLog — Rejestr
+      </h1>
+      <p class="text-xs text-slate-500 mt-1">Szybkie wprowadzanie tankowań i kosztów trasy</p>
+    </div>
+
+    <!-- Formularz -->
+    <form id="expenseForm" onsubmit="saveExpense(event)" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+      
+      <!-- Wybór Pojazdu (Dynamiczny z localStorage) -->
+      <div>
+        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Pojazd</label>
+        <select id="vehicle" required class="w-full p-3 border rounded-xl bg-slate-50 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          <!-- Wypełniane dynamicznie przez JS -->
+        </select>
+      </div>
+
+      <!-- Kategoria & Data -->
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Kategoria</label>
+          <select id="category" onchange="toggleFuelFields()" class="w-full p-3 border rounded-xl bg-slate-50 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <option value="Paliwo">Paliwo</option>
+            <option value="Opłata drogowa">e-TOLL / Autostrada</option>
+            <option value="Serwis">Serwis / Części</option>
+            <option value="Inne">Inne wydatki</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Data</label>
+          <input type="date" id="date" required class="w-full p-3 border rounded-xl bg-slate-50 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+      </div>
+
+      <!-- Pola specyficzne dla paliwa -->
+      <div id="fuelFields" class="grid grid-cols-2 gap-3 bg-blue-50/50 p-3 rounded-xl border border-blue-100">
+        <div>
+          <label class="block text-xs font-bold text-blue-700 uppercase mb-1">Litry (L)</label>
+          <input type="number" step="0.01" id="fuelLiters" placeholder="np. 55.40" class="w-full p-2.5 border rounded-lg font-medium focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-blue-700 uppercase mb-1">Stan licznika (km)</label>
+          <input type="number" id="mileage" placeholder="np. 284500" class="w-full p-2.5 border rounded-lg font-medium focus:outline-none">
+        </div>
+      </div>
+
+      <!-- Kwota i Waluta -->
+      <div class="grid grid-cols-3 gap-3">
+        <div class="col-span-2">
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Kwota brutto</label>
+          <input type="number" step="0.01" id="amount" required placeholder="0.00" class="w-full p-3 border rounded-xl bg-slate-50 font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Waluta</label>
+          <select id="currency" class="w-full p-3 border rounded-xl bg-slate-50 font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <option value="PLN">PLN</option>
+            <option value="EUR">EUR</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Aparat i Zdjęcie -->
+      <div>
+        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Zdjęcie paragonu / faktury</label>
+        <input type="file" id="photoInput" accept="image/*" capture="environment" onchange="handlePhotoUpload(event)" class="hidden">
+        
+        <button type="button" onclick="document.getElementById('photoInput').click()" class="w-full py-3 px-4 border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-xl bg-slate-50 text-slate-600 font-semibold flex items-center justify-center gap-2 transition-colors">
+          <span>📷</span> Zrób zdjęcie paragonu
+        </button>
+        
+        <div id="photoPreviewContainer" class="hidden mt-2 relative">
+          <img id="photoPreview" src="" class="w-full h-32 object-cover rounded-xl border border-slate-200">
+          <button type="button" onclick="removePhoto()" class="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 text-xs px-2 shadow">✕ Usuń</button>
+        </div>
+      </div>
+
+      <!-- Zapis -->
+      <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all active:scale-95">
+        💾 Zapisz Wydatek
+      </button>
+
+    </form>
+
+    <!-- Ostatnio dodane lokalnie -->
+    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-3">
+      <div class="flex justify-between items-center border-b pb-2">
+        <h2 class="font-bold text-slate-800 text-sm">Ostatnie wpisy z tego telefonu</h2>
+        <button onclick="exportToCSV()" class="text-xs bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg font-semibold text-slate-600">📁 Pobierz CSV</button>
+      </div>
+      <div id="recentExpensesList" class="space-y-2 text-xs text-slate-500">
+        <p class="text-center py-2">Brak wpisów w pamięci.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Modal Podglądu Zdjęcia -->
+  <div id="photoModal" class="fixed inset-0 bg-black/80 hidden z-[100] flex items-center justify-center p-4 backdrop-blur-sm" onclick="closePhotoModal()">
+    <div class="relative max-w-3xl max-h-[90vh] w-full flex flex-col items-center justify-center" onclick="event.stopPropagation()">
+      <button type="button" onclick="closePhotoModal()" class="absolute -top-10 right-0 text-white bg-red-600 hover:bg-red-700 px-3 py-1 rounded-full text-sm font-bold shadow-lg">
+        ✕ Zamknij
+      </button>
+      <img id="modalImage" src="" alt="Paragon" class="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl border border-white/20">
+    </div>
+  </div>
+
+  <!-- Dolny Pasek Nawigacji PWA -->
+  <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around items-center p-2 shadow-lg z-50">
+    <a href="index.html" class="flex flex-col items-center text-xs font-semibold text-blue-600 focus:outline-none py-1">
+      <span class="text-xl">➕</span>
+      <span>Dodaj Wydatek</span>
+    </a>
+    <a href="panel.html" class="flex flex-col items-center text-xs font-semibold text-gray-500 hover:text-blue-600 focus:outline-none py-1">
+      <span class="text-xl">📊</span>
+      <span>Flota i Koszty</span>
+    </a>
+  </nav>
+
+  <script>
+    let currentCompressedPhoto = null;
+    const defaultVehicles = [
+      { registration: 'LLE 44468', name: 'Audi A4 B6' },
+      { registration: 'LUB 6894R', name: 'Opel' }
+    ];
+
+    document.getElementById('date').valueAsDate = new Date();
+
+    function loadVehicleOptions() {
+      const storedVehicles = JSON.parse(localStorage.getItem('fleet_vehicles') || 'null');
+      const vehicles = storedVehicles || defaultVehicles;
+      const select = document.getElementById('vehicle');
+      
+      select.innerHTML = vehicles.map(v => `
+        <option value="${v.registration}">${v.name} (${v.registration})</option>
+      `).join('');
+    }
+
+    function toggleFuelFields() {
+      const cat = document.getElementById('category').value;
+      const fuelFields = document.getElementById('fuelFields');
+      if (cat === 'Paliwo') {
+        fuelFields.classList.remove('hidden');
+      } else {
+        fuelFields.classList.add('hidden');
+      }
+    }
+
+    function handlePhotoUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          const maxWidth = 1000;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          ctx.drawImage(img, 0, 0, width, height);
+
+          currentCompressedPhoto = canvas.toDataURL('image/jpeg', 0.6);
+          document.getElementById('photoPreview').src = currentCompressedPhoto;
+          document.getElementById('photoPreviewContainer').classList.remove('hidden');
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function removePhoto() {
+      currentCompressedPhoto = null;
+      document.getElementById('photoInput').value = '';
+      document.getElementById('photoPreviewContainer').classList.add('hidden');
+    }
+
+    function saveExpense(e) {
+      e.preventDefault();
+
+      const expense = {
+        id: Date.now(),
+        date: document.getElementById('date').value,
+        vehicle: document.getElementById('vehicle').value,
+        category: document.getElementById('category').value,
+        amount_gross: parseFloat(document.getElementById('amount').value),
+        currency: document.getElementById('currency').value,
+        fuel_liters: document.getElementById('category').value === 'Paliwo' ? parseFloat(document.getElementById('fuelLiters').value) || null : null,
+        mileage: document.getElementById('category').value === 'Paliwo' ? parseInt(document.getElementById('mileage').value) || null : null,
+        photo: currentCompressedPhoto
+      };
+
+      const existing = JSON.parse(localStorage.getItem('fleet_expenses') || '[]');
+      existing.push(expense);
+      localStorage.setItem('fleet_expenses', JSON.stringify(existing));
+
+      alert('Wydatek został zapisany!');
+      document.getElementById('expenseForm').reset();
+      document.getElementById('date').valueAsDate = new Date();
+      removePhoto();
+      toggleFuelFields();
+      renderRecentExpenses();
+    }
+
+    function renderRecentExpenses() {
+      const existing = JSON.parse(localStorage.getItem('fleet_expenses') || '[]');
+      const container = document.getElementById('recentExpensesList');
+
+      if (existing.length === 0) {
+        container.innerHTML = '<p class="text-center py-2">Brak wpisów w pamięci.</p>';
+        return;
+      }
+
+      container.innerHTML = existing.slice().reverse().slice(0, 5).map(e => `
+        <div class="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+          <div>
+            <span class="font-bold text-slate-800">${e.vehicle}</span> — ${e.category}
+            <div class="text-[10px] text-slate-400">${e.date} ${e.fuel_liters ? '| ' + e.fuel_liters + ' L' : ''}</div>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-slate-900">${e.amount_gross.toFixed(2)} ${e.currency}</span>
+            ${e.photo ? `<button type="button" onclick="openPhotoModal('${e.photo}')" class="text-blue-600 bg-blue-50 px-2 py-1 rounded text-[10px] font-bold border border-blue-100">📸</button>` : ''}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function openPhotoModal(base64Image) {
+      if (!base64Image) return;
+      document.getElementById('modalImage').src = base64Image;
+      document.getElementById('photoModal').classList.remove('hidden');
+    }
+
+    function closePhotoModal() {
+      document.getElementById('photoModal').classList.add('hidden');
+      document.getElementById('modalImage').src = '';
+    }
+
+    function exportToCSV() {
+      const existing = JSON.parse(localStorage.getItem('fleet_expenses') || '[]');
+      if (existing.length === 0) {
+        alert("Brak danych do eksportu.");
+        return;
+      }
+
+      let csvContent = "Data,Pojazd,Kategoria,Kwota,Waluta,Litry,Stan_Licznika,Zdjęcie\n";
+      existing.forEach(e => {
+        csvContent += `"${e.date}","${e.vehicle}","${e.category}",${e.amount_gross},"${e.currency}",${e.fuel_liters || ''},${e.mileage || ''},"${e.photo ? 'TAK' : 'NIE'}"\n`;
+      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Raport_Kierowcy_${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      loadVehicleOptions();
+      renderRecentExpenses();
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js');
+      }
+    });
+  </script>
+</body>
+</html>

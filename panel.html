@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FleetLog AI - Panel Przewoźnika</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @media print {
+      nav, button, label, select, #photoModal, #addVehicleModal, .no-print {
+        display: none !important;
+      }
+      body {
+        background-color: white !important;
+        color: black !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      .max-w-6xl {
+        max-width: 100% !important;
+        width: 100% !important;
+      }
+      tr {
+        page-break-inside: avoid;
+      }
+      .shadow-sm, .shadow, .shadow-lg {
+        box-shadow: none !important;
+        border: 1px solid #e2e8f0 !important;
+      }
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen p-4 md:p-8">
+
+  <div class="max-w-6xl mx-auto space-y-6">
+    
+    <!-- Nagłówek Panelu -->
+    <div class="bg-white rounded-2xl shadow-sm p-6 border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div>
+        <h1 class="text-2xl font-bold text-slate-900">📊 Panel Przewoźnika — Analiza Floty</h1>
+        <p class="text-sm text-slate-500">Zestawienie kosztów, spalania oraz zarządzanie pojazdami</p>
+      </div>
+
+      <!-- Akcje / Przyciski -->
+      <div class="flex flex-wrap items-center gap-2 no-print w-full md:w-auto">
+        <button type="button" onclick="openAddVehicleModal()" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-3.5 py-2.5 rounded-xl shadow transition-all active:scale-95 flex items-center gap-1.5 flex-1 md:flex-none justify-center">
+          <span>🚘</span> Dodaj Pojazd
+        </button>
+
+        <button type="button" onclick="generatePDF()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-3.5 py-2.5 rounded-xl shadow transition-all active:scale-95 flex items-center gap-1.5 flex-1 md:flex-none justify-center">
+          <span>📥</span> Pobierz PDF
+        </button>
+
+        <button type="button" onclick="window.print()" class="bg-slate-700 hover:bg-slate-800 text-white text-sm font-semibold px-3.5 py-2.5 rounded-xl shadow transition-all active:scale-95 flex items-center gap-1.5 flex-1 md:flex-none justify-center">
+          <span>🖨️</span> Drukuj
+        </button>
+
+        <label class="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold px-3.5 py-2.5 rounded-xl shadow transition-all active:scale-95 text-center flex items-center gap-1.5 flex-1 md:flex-none justify-center">
+          <span>📁</span> Importuj CSV
+          <input type="file" id="csvFileInput" accept=".csv" class="hidden" onchange="handleCSVImport(event)">
+        </label>
+
+        <button type="button" onclick="clearAllExpenses()" class="bg-red-50 hover:bg-red-100 text-red-600 text-sm font-semibold px-3.5 py-2.5 rounded-xl transition-all border border-red-200 flex-1 md:flex-none justify-center">
+          🗑️ Wyczyść bazę
+        </button>
+      </div>
+    </div>
+
+    <!-- Karty Podsumowania (PLN, EUR oraz Dynamiczne Pojazdy) -->
+    <div id="kpiContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      
+      <!-- Suma Wydatków PLN -->
+      <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Koszty Całkowite (PLN)</p>
+        <p id="kpiTotalPLN" class="text-2xl font-black text-slate-900 mt-1">0.00 PLN</p>
+        <span class="text-xs text-slate-500 mt-1 block">paliwo + opłaty + serwis</span>
+      </div>
+
+      <!-- Suma Wydatków EUR -->
+      <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Koszty Całkowite (EUR)</p>
+        <p id="kpiTotalEUR" class="text-2xl font-black text-blue-600 mt-1">0.00 EUR</p>
+        <span class="text-xs text-slate-500 mt-1 block">trasy zagraniczne</span>
+      </div>
+
+      <!-- Karty spalania poszczególnych pojazdów generowane dynamicznie w JS -->
+
+    </div>
+
+    <!-- Tabela Raportu Wydatków -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      <div class="p-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <h2 class="font-bold text-slate-800 text-lg">📑 Zestawienie Wpisów i Tankowań</h2>
+        
+        <!-- Filtr Pojazdów (Dynamiczny) -->
+        <select id="filterVehicle" onchange="renderTable()" class="text-sm p-2 border rounded-xl bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:outline-none no-print">
+          <!-- Wypełniane przez JS -->
+        </select>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse text-sm">
+          <thead>
+            <tr class="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200 text-xs uppercase tracking-wider">
+              <th class="p-4">Data</th>
+              <th class="p-4">Pojazd</th>
+              <th class="p-4">Kategoria</th>
+              <th class="p-4">Litry</th>
+              <th class="p-4">Stan Licznika</th>
+              <th class="p-4">Kwota</th>
+              <th class="p-4 text-center">Zdjęcie</th>
+              <th class="p-4 text-center no-print">Akcja</th>
+            </tr>
+          </thead>
+          <tbody id="expenseTableBody" class="divide-y divide-slate-100 text-slate-700">
+            <tr>
+              <td colspan="8" class="p-6 text-center text-slate-400">Brak danych. Wczytaj dane z pamięci lub wgraj plik CSV.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MODAL: Dodawanie Nowego Pojazdu -->
+  <div id="addVehicleModal" class="fixed inset-0 bg-black/70 hidden z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="bg-white rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl relative">
+      <div class="flex justify-between items-center border-b pb-3">
+        <h3 class="text-lg font-bold text-slate-900">🚘 Dodaj nowy pojazd do floty</h3>
+        <button type="button" onclick="closeAddVehicleModal()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
+      </div>
+
+      <form id="vehicleForm" onsubmit="saveNewVehicle(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Nazwa / Model pojazdu</label>
+          <input type="text" id="newVehName" required placeholder="np. Mercedes Sprinter" class="w-full p-3 border rounded-xl bg-slate-50 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Numer rejestracyjny</label>
+          <input type="text" id="newVehReg" required placeholder="np. LU 12345" class="w-full p-3 border rounded-xl bg-slate-50 font-bold text-slate-800 uppercase focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Początkowy stan licznika (km)</label>
+          <input type="number" id="newVehMileage" placeholder="np. 185000" class="w-full p-3 border rounded-xl bg-slate-50 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <button type="button" onclick="closeAddVehicleModal()" class="w-1/2 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-all">Anuluj</button>
+          <button type="submit" class="w-1/2 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow transition-all">Zapisz Pojazd</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Podglądu Zdjęcia -->
+  <div id="photoModal" class="fixed inset-0 bg-black/80 hidden z-[100] flex items-center justify-center p-4 backdrop-blur-sm" onclick="closePhotoModal()">
+    <div class="relative max-w-3xl max-h-[90vh] w-full flex flex-col items-center justify-center" onclick="event.stopPropagation()">
+      <button type="button" onclick="closePhotoModal()" class="absolute -top-10 right-0 text-white bg-red-600 hover:bg-red-700 px-3 py-1 rounded-full text-sm font-bold shadow-lg">
+        ✕ Zamknij
+      </button>
+      <img id="modalImage" src="" alt="Paragon" class="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl border border-white/20">
+    </div>
+  </div>
+
+  <!-- Dolna Nawigacja PWA -->
+  <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around items-center p-2 shadow-lg z-50 no-print">
+    <a href="index.html" class="flex flex-col items-center text-xs font-semibold text-gray-500 hover:text-blue-600 focus:outline-none py-1">
+      <span class="text-xl">➕</span>
+      <span>Dodaj Wydatek</span>
+    </a>
+    <a href="panel.html" class="flex flex-col items-center text-xs font-semibold text-blue-600 focus:outline-none py-1">
+      <span class="text-xl">📊</span>
+      <span>Flota i Koszty</span>
+    </a>
+  </nav>
+
+  <div class="h-16"></div>
+
+  <script>
+    let globalExpenses = [];
+    let fleetVehicles = [];
+
+    const defaultVehicles = [
+      { registration: 'LLE 44468', name: 'Audi A4 B6', initialMileage: 0 },
+      { registration: 'LUB 6894R', name: 'Opel', initialMileage: 0 }
+    ];
+
+    function initVehicles() {
+      const stored = localStorage.getItem('fleet_vehicles');
+      if (!stored) {
+        fleetVehicles = defaultVehicles;
+        localStorage.setItem('fleet_vehicles', JSON.stringify(fleetVehicles));
+      } else {
+        fleetVehicles = JSON.parse(stored);
+      }
+      renderVehicleFilter();
+    }
+
+    function renderVehicleFilter() {
+      const select = document.getElementById('filterVehicle');
+      select.innerHTML = '<option value="ALL">Wszystkie pojazdy</option>' + 
+        fleetVehicles.map(v => `<option value="${v.registration}">${v.name} (${v.registration})</option>`).join('');
+    }
+
+    function openAddVehicleModal() {
+      document.getElementById('addVehicleModal').classList.remove('hidden');
+    }
+
+    function closeAddVehicleModal() {
+      document.getElementById('addVehicleModal').classList.add('hidden');
+      document.getElementById('vehicleForm').reset();
+    }
+
+    function saveNewVehicle(e) {
+      e.preventDefault();
+      const name = document.getElementById('newVehName').value.trim();
+      const registration = document.getElementById('newVehReg').value.trim().toUpperCase();
+      const initialMileage = parseInt(document.getElementById('newVehMileage').value) || 0;
+
+      if (!name || !registration) return;
+
+      fleetVehicles.push({ name, registration, initialMileage });
+      localStorage.setItem('fleet_vehicles', JSON.stringify(fleetVehicles));
+
+      closeAddVehicleModal();
+      initVehicles();
+      processData();
+      alert(`Pojazd ${name} (${registration}) został pomyślnie dodany do floty!`);
+    }
+
+    function loadFromLocalStorage() {
+      const storedExpenses = localStorage.getItem('fleet_expenses');
+      if (!storedExpenses) {
+        globalExpenses = [];
+        processData();
+        return;
+      }
+
+      const expenses = JSON.parse(storedExpenses);
+      globalExpenses = expenses.map(e => ({
+        id: e.id || Date.now() + Math.random(),
+        date: e.date,
+        vehicle: e.vehicle || 'Inny',
+        category: e.category,
+        amount: parseFloat(e.amount_gross) || 0,
+        currency: e.currency,
+        liters: parseFloat(e.fuel_liters) || null,
+        mileage: parseInt(e.mileage) || null,
+        photo: e.photo || null,
+        hasPhoto: e.photo ? true : false
+      }));
+
+      processData();
+    }
+
+    function handleCSVImport(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const text = e.target.result;
+        const lines = text.split('\n');
+        
+        globalExpenses = [];
+        
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+
+          const cols = line.split(',').map(col => col.replace(/^"|"$/g, '').trim());
+
+          if (cols.length >= 5) {
+            globalExpenses.push({
+              id: Date.now() + i,
+              date: cols[0] || '',
+              vehicle: cols[1] || 'Inny',
+              category: cols[2] || '',
+              amount: parseFloat(cols[3]) || 0,
+              currency: cols[4] || 'PLN',
+              liters: parseFloat(cols[5]) || null,
+              mileage: parseInt(cols[6]) || null,
+              photo: null,
+              hasPhoto: cols[7] === 'TAK'
+            });
+          }
+        }
+
+        processData();
+      };
+      reader.readAsText(file);
+    }
+
+    function processData() {
+      calculateTotals();
+      renderVehicleCards();
+      renderTable();
+    }
+
+    function calculateTotals() {
+      let totalPLN = 0;
+      let totalEUR = 0;
+
+      globalExpenses.forEach(e => {
+        if (e.currency === 'EUR') {
+          totalEUR += e.amount;
+        } else {
+          totalPLN += e.amount;
+        }
+      });
+
+      document.getElementById('kpiTotalPLN').innerText = totalPLN.toFixed(2) + ' PLN';
+      document.getElementById('kpiTotalEUR').innerText = totalEUR.toFixed(2) + ' EUR';
+    }
+
+    function renderVehicleCards() {
+      const container = document.getElementById('kpiContainer');
+      
+      // Zachowujemy 2 pierwsze karty stałe (PLN i EUR)
+      const staticCards = `
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Koszty Całkowite (PLN)</p>
+          <p id="kpiTotalPLN" class="text-2xl font-black text-slate-900 mt-1">${document.getElementById('kpiTotalPLN') ? document.getElementById('kpiTotalPLN').innerText : '0.00 PLN'}</p>
+          <span class="text-xs text-slate-500 mt-1 block">paliwo + opłaty + serwis</span>
+        </div>
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Koszty Całkowite (EUR)</p>
+          <p id="kpiTotalEUR" class="text-2xl font-black text-blue-600 mt-1">${document.getElementById('kpiTotalEUR') ? document.getElementById('kpiTotalEUR').innerText : '0.00 EUR'}</p>
+          <span class="text-xs text-slate-500 mt-1 block">trasy zagraniczne</span>
+        </div>
+      `;
+
+      const vehicleCards = fleetVehicles.map(v => {
+        const stats = getFuelStats(v.registration);
+        return `
+          <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 bg-gradient-to-br from-white to-blue-50/30">
+            <div class="flex justify-between items-start">
+              <p class="text-xs font-semibold text-blue-600 uppercase tracking-wider">${v.name}</p>
+              <span class="text-xs bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded">${v.registration}</span>
+            </div>
+            <p class="text-2xl font-black text-slate-900 mt-1">${stats.avg}</p>
+            <span class="text-xs text-slate-500 mt-1 block">${stats.details}</span>
+          </div>
+        `;
+      }).join('');
+
+      container.innerHTML = staticCards + vehicleCards;
+      calculateTotals();
+    }
+
+    function getFuelStats(regNumber) {
+      const fuelEntries = globalExpenses
+        .filter(e => e.vehicle.includes(regNumber) && e.category === 'Paliwo' && e.liters && e.mileage)
+        .sort((a, b) => a.mileage - b.mileage);
+
+      if (fuelEntries.length < 2) {
+        return { avg: '-- L/100km', details: 'Min. 2 tankowania z licznikiem' };
+      }
+
+      const minMileage = fuelEntries[0].mileage;
+      const maxMileage = fuelEntries[fuelEntries.length - 1].mileage;
+      const totalKm = maxMileage - minMileage;
+
+      let totalLiters = 0;
+      for (let i = 1; i < fuelEntries.length; i++) {
+        totalLiters += fuelEntries[i].liters;
+      }
+
+      if (totalKm <= 0) {
+        return { avg: 'Błąd km', details: 'Licznik nie wzrósł' };
+      }
+
+      const avgConsumption = (totalLiters / totalKm) * 100;
+      return {
+        avg: avgConsumption.toFixed(2) + ' L/100km',
+        details: `Dystans: ${totalKm} km | ${totalLiters.toFixed(1)} L`
+      };
+    }
+
+    function renderTable() {
+      const filter = document.getElementById('filterVehicle').value;
+      const tbody = document.getElementById('expenseTableBody');
+
+      const filtered = globalExpenses.filter(e => filter === 'ALL' || e.vehicle.includes(filter));
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="p-6 text-center text-slate-400">Brak danych dla wybranego filtra.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = filtered.slice().reverse().map(e => `
+        <tr class="hover:bg-slate-50/80 transition-colors border-b border-slate-100">
+          <td class="p-4 font-medium">${e.date}</td>
+          <td class="p-4"><span class="bg-slate-100 font-bold text-slate-700 px-2 py-1 rounded text-xs">${e.vehicle}</span></td>
+          <td class="p-4">${e.category}</td>
+          <td class="p-4 font-semibold text-blue-600">${e.liters ? e.liters.toFixed(2) + ' L' : '-'}</td>
+          <td class="p-4">${e.mileage ? e.mileage + ' km' : '-'}</td>
+          <td class="p-4 font-bold ${e.currency === 'EUR' ? 'text-blue-600' : 'text-slate-900'}">${e.amount.toFixed(2)} ${e.currency}</td>
+          <td class="p-4 text-center">
+            ${e.photo ? `
+              <button type="button" onclick="openPhotoModal('${e.photo}')" class="inline-flex items-center gap-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold px-2.5 py-1 rounded-lg text-xs transition-colors border border-blue-200 no-print">
+                📸 Powiększ
+              </button>
+            ` : (e.hasPhoto ? `
+              <span class="text-xs text-slate-400">📸 W CSV</span>
+            ` : `
+              <span class="text-xs text-slate-300">—</span>
+            `)}
+          </td>
+          <td class="p-4 text-center no-print">
+            <button type="button" onclick="deleteExpense(${e.id})" class="text-red-500 hover:text-red-700 font-bold px-2 py-1 text-xs">
+              🗑️
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function deleteExpense(id) {
+      if (!confirm("Czy na pewno chcesz usunąć ten wydatek?")) return;
+
+      globalExpenses = globalExpenses.filter(e => e.id !== id);
+      
+      const localExpenses = JSON.parse(localStorage.getItem('fleet_expenses') || '[]');
+      const updatedLocal = localExpenses.filter(e => e.id !== id);
+      localStorage.setItem('fleet_expenses', JSON.stringify(updatedLocal));
+
+      processData();
+    }
+
+    function clearAllExpenses() {
+      if (!confirm("UWAGA: Czy chcesz usunąć wszystkie zapisane wydatki z pamięci podręcznej?")) return;
+      localStorage.removeItem('fleet_expenses');
+      globalExpenses = [];
+      processData();
+    }
+
+    function openPhotoModal(base64Image) {
+      if (!base64Image) return;
+      document.getElementById('modalImage').src = base64Image;
+      document.getElementById('photoModal').classList.remove('hidden');
+    }
+
+    function closePhotoModal() {
+      document.getElementById('photoModal').classList.add('hidden');
+      document.getElementById('modalImage').src = '';
+    }
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closePhotoModal();
+        closeAddVehicleModal();
+      }
+    });
+
+    function generatePDF() {
+      if (globalExpenses.length === 0) {
+        alert("Brak danych do wygenerowania raportu PDF.");
+        return;
+      }
+
+      const element = document.querySelector('.max-w-6xl');
+
+      const opt = {
+        margin:       [10, 10, 10, 10],
+        filename:     `Raport_Floty_${new Date().toISOString().slice(0,10)}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true, logging: false },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+      };
+
+      html2pdf().set(opt).from(element).save().catch(err => {
+        console.error("Błąd generowania PDF:", err);
+        alert("Nie udało się pobrać pliku. Użyj przycisku 'Drukuj' i wybierz 'Zapisz jako PDF'.");
+      });
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initVehicles();
+      loadFromLocalStorage();
+    });
+  </script>
+</body>
+</html>
